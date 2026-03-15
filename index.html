@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="pa">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ਸ਼ਬਦ ਮਿਲਾਓ - ਪੰਜਾਬੀ ਗਤੀਵਿਧੀ</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --primary-bg: #f0f8ff;
+            --box-shadow: 0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23);
+            --correct-color: #4CAF50;
+            --wrong-color: #f44336;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: var(--primary-bg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #2c3e50;
+            text-shadow: 2px 2px 4px #aaa;
+            font-size: 2.5rem;
+        }
+
+        .header-box {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        #score-board {
+            font-size: 24px;
+            font-weight: bold;
+            background: white;
+            padding: 10px 25px;
+            border-radius: 50px;
+            box-shadow: var(--box-shadow);
+            color: #2c3e50;
+        }
+
+        #reset-btn {
+            padding: 10px 25px;
+            font-size: 20px;
+            font-weight: bold;
+            background: #ff9800;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: var(--box-shadow);
+            transition: 0.3s;
+        }
+
+        #reset-btn:hover {
+            background: #e68a00;
+            transform: scale(1.05);
+        }
+
+        .game-container {
+            display: grid;
+            grid-template-columns: 200px 200px;
+            gap: 25px;
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: var(--box-shadow);
+        }
+
+        .image-box {
+            width: 150px;
+            height: 150px;
+            border: 3px solid #ddd;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #fff;
+            overflow: hidden;
+            box-shadow: inset 5px 5px 10px #eee;
+        }
+
+        .image-box img {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+        }
+
+        .drop-zone {
+            width: 180px;
+            height: 150px;
+            border: 3px dashed #bbb;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #fafafa;
+            position: relative;
+        }
+
+        /* ਖਾਲੀ ਡੱਬੇ ਵਿੱਚ ਲਿਖਿਆ ਟੈਕਸਟ */
+        .drop-zone::after {
+            content: "ਸ਼ਬਦ ਇੱਥੇ ਰੱਖੋ";
+            color: #aaa;
+            font-size: 14px;
+            position: absolute;
+        }
+
+        /* ਜਦੋਂ ਸ਼ਬਦ ਅੰਦਰ ਆ ਜਾਵੇ ਤਾਂ ਟੈਕਸਟ ਲੁਕਾ ਦਿਓ */
+        .drop-zone:has(.word-card)::after {
+            display: none;
+        }
+
+        .word-bank {
+            margin-top: 40px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 800px;
+        }
+
+        .word-card {
+            padding: 15px 30px;
+            background: linear-gradient(145deg, #ffffff, #e6e6e6);
+            border: 1px solid #ccc;
+            border-radius: 12px;
+            cursor: grab;
+            font-size: 24px;
+            font-weight: bold;
+            box-shadow: 5px 5px 10px #bebebe, -5px -5px 10px #ffffff;
+            z-index: 10;
+        }
+
+        .correct {
+            background: var(--correct-color) !important;
+            color: white;
+            border: none;
+            box-shadow: none;
+        }
+
+        .wrong {
+            background: var(--wrong-color) !important;
+            color: white;
+            animation: shake 0.5s;
+        }
+
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            50% { transform: translateX(10px); }
+            75% { transform: translateX(-10px); }
+            100% { transform: translateX(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>ਤਸਵੀਰ ਨੂੰ ਸਹੀ ਸ਼ਬਦ ਨਾਲ ਮਿਲਾਓ</h1>
+    
+    <div class="header-box">
+        <div id="score-board">ਅੰਕ: <span id="points">0</span></div>
+        <button id="reset-btn" onclick="initGame()">ਨਵੇਂ ਸ਼ਬਦ (Reset)</button>
+    </div>
+
+    <div class="game-container" id="game-grid"></div>
+
+    <div class="word-bank" id="word-bank"></div>
+
+    <script>
+        const allWords = [
+            "ਪੁਸਤਕ", "ਸੂਰਜ", "ਊਠ", "ਅੱਖ", "ਇੱਟ", "ਸਲੇਟ", "ਹਾਥੀ", "ਕਬੂਤਰ", 
+            "ਖਰਗੋਸ਼", "ਗਮਲਾ", "ਘੜਾ", "ਚਮਚ", "ਛਤਰੀ", "ਜਹਾਜ", "ਝੰਡਾ", 
+            "ਟਮਾਟਰ", "ਡੱਡੂ", "ਢੋਲ", "ਪਤੰਗ", "ਫਲ", "ਬੱਤਖ਼", "ਭਾਲੂ", 
+            "ਮਟਰ", "ਰੇਲ", "ਲਾਟੂ", "ਵੇਲਣਾ"
+        ];
+
+        let score = 0;
+
+        function initGame() {
+            const gameGrid = document.getElementById('game-grid');
+            const wordBank = document.getElementById('word-bank');
+            
+            gameGrid.innerHTML = '';
+            wordBank.innerHTML = '';
+            
+            // ਹਰ ਵਾਰ ਨਵੇਂ 4 ਰੈਂਡਮ ਸ਼ਬਦ ਚੁਣੋ
+            let currentRoundWords = [...allWords].sort(() => 0.5 - Math.random()).slice(0, 4);
+
+            currentRoundWords.forEach((word) => {
+                // ਤਸਵੀਰ ਵਾਲਾ ਡੱਬਾ
+                const imgBox = document.createElement('div');
+                imgBox.className = 'image-box';
+                imgBox.innerHTML = `<img src="images/${word}.png" onerror="this.alt='ਤਸਵੀਰ ਮੌਜੂਦ ਨਹੀਂ'" alt="${word}">`; 
+                
+                // ਖਾਲੀ ਡੱਬਾ (Drop Zone)
+                const dropZone = document.createElement('div');
+                dropZone.className = 'drop-zone';
+                dropZone.dataset.match = word;
+                dropZone.addEventListener('dragover', e => e.preventDefault());
+                dropZone.addEventListener('drop', handleDrop);
+
+                gameGrid.appendChild(imgBox);
+                gameGrid.appendChild(dropZone);
+            });
+
+            // ਸ਼ਬਦਾਂ ਨੂੰ ਬੈਂਕ ਵਿੱਚ ਪਾਓ
+            [...currentRoundWords].sort(() => 0.5 - Math.random()).forEach(word => {
+                const wordCard = document.createElement('div');
+                wordCard.className = 'word-card';
+                wordCard.innerText = word;
+                wordCard.draggable = true;
+                wordCard.id = 'word-' + Math.random(); // Unique ID for drag
+                wordCard.addEventListener('dragstart', e => {
+                    e.dataTransfer.setData('text', e.target.id);
+                });
+                wordBank.appendChild(wordCard);
+            });
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            const wordId = e.dataTransfer.getData('text');
+            const wordCard = document.getElementById(wordId);
+            if(!wordCard) return;
+
+            const droppedWord = wordCard.innerText;
+            const targetWord = this.dataset.match;
+
+            if (droppedWord === targetWord) {
+                this.appendChild(wordCard);
+                wordCard.classList.add('correct');
+                wordCard.draggable = false;
+                score += 10;
+                document.getElementById('points').innerText = score;
+                
+                confetti({
+                    particleCount: 150,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+            } else {
+                wordCard.classList.add('wrong');
+                setTimeout(() => {
+                    wordCard.classList.remove('wrong');
+                }, 500);
+            }
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
